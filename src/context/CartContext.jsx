@@ -15,6 +15,7 @@ export const CartContext = createContext({
   addProduct: () => {},
   removeProduct: () => {},
   updateProduct: () => {},
+  removeProductFromDB: () => {}
 });
 
 export function CartProvider({ children }) {
@@ -98,26 +99,8 @@ export function CartProvider({ children }) {
   };
 }, [session]);
 
-  const updateProduct = async (updated) => {
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
-
-    try {
-      const payload = {
-        title: updated.title,
-        price: updated.price,
-        description: updated.description,
-        thumbnail: updated.thumbnail,
-        updated_at: new Date().toISOString(),
-      };
-
-      const { error } = await supabase.from("product_2v").update(payload).eq("id", updated.id);
-    } catch (err) {
-      console.error("updateProduct exception:", err);
-      setError(String(err));
-    }
-  };
   
-  const addToCart = (product) => {
+  function addToCart(product) {
     setCart((prev) => [...prev, { ...product, quantity: 1 }]);
 
     async function addCartItem(prod) {
@@ -160,8 +143,22 @@ export function CartProvider({ children }) {
     }
 
     addCartItem(product);
-  };
+  }
 
+  const removeProductFromDB = async (id) =>{
+
+       try {
+        const { error } = await supabase.from("product_2v").delete().eq("id", id);
+        if (error) {
+          console.error("Erro ao remover produto do DB:", error);
+        } else {
+          removeProduct(id);
+        }
+      } catch (err) {
+        console.error("Exceção ao remover produto do DB:", err);
+      }
+    };
+  
   const updateQty = async (product, qty) => {
     if (!session) {
       setError("Entre em sua conta para modificar o carrinho");
@@ -270,7 +267,25 @@ export function CartProvider({ children }) {
       setError(String(err));
     }
   };
+  const updateProduct = async (updated) => {
+    setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
 
+    try {
+      const payload = {
+        title: updated.title,
+        price: updated.price,
+        description: updated.description,
+        thumbnail: updated.thumbnail,
+        updated_at: new Date().toISOString(),
+      };
+
+      const { error } = await supabase.from("product_2v").update(payload).eq("id", updated.id);
+    } catch (err) {
+      console.error("updateProduct exception:", err);
+      setError(String(err));
+    }
+  };
+  
   const addProduct = (product) => {
     setProducts((prev) => [...prev, { ...product, id: Date.now() }]);
   };
@@ -292,6 +307,9 @@ export function CartProvider({ children }) {
     addProduct,
     removeProduct,
     updateProduct,
+    removeProductFromDB,
+
+    
   };
 
   return <CartContext.Provider value={context}>{children}</CartContext.Provider>;
